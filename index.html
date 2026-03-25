@@ -1,27 +1,28 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Reservas</title>
-</head>
-<body>
+<h1>Reservar</h1>
 
-  <h1>Reservar</h1>
+<form id="form">
+  <input type="text" id="nome" placeholder="Nome" required>
 
-  <form id="form">
-    <input type="text" id="nome" placeholder="Nome" required>
-    <input type="email" id="email" placeholder="Email" required>
-    <input type="date" id="entrada" required>
-    <input type="date" id="saida" required>
+  <input type="email" id="email" placeholder="Email" required>
 
-    <select id="pessoas">
-      <option value="1">1 Pessoa</option>
-      <option value="2">2 Pessoas</option>
-    </select>
+  <input
+    type="tel"
+    id="telefone"
+    placeholder="Telefone"
+    required
+    pattern="^\+?[0-9\s]{9,15}$"
+    title="Introduz um número de telefone válido"
+  >
 
-    <button type="submit">Reservar</button>
-  </form>
+  <input type="date" id="entrada" required>
+  <input type="date" id="saida" required>
 
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+  <select id="pessoas" required>
+    <option value="1">1 Pessoa</option>
+    <option value="2">2 Pessoas</option>
+  </select>
+
+  <button type="submit">Reservar</button>
+</form>
+
+<script type="module" src="app.js"></script>
