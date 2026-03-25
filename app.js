@@ -5,13 +5,6 @@ const supabase = createClient(
   'sb_publishable_q2D7gXWZup5fbguqx_0VlA_YDzsYsqv'
 )
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-
-const supabase = createClient(
-  'https://lzbxmrzospioxznnxdjs.supabase.co',
-  'sb_publishable_q2D7gXWZup5fbguqx_0VlA_YDzsYsqv'
-)
-
 document.getElementById("form").addEventListener("submit", async (e) => {
   e.preventDefault()
 
@@ -23,25 +16,29 @@ document.getElementById("form").addEventListener("submit", async (e) => {
     const saida = document.getElementById("saida").value
     const pessoas = document.getElementById("pessoas").value
 
+    console.log("Dados:", { nome, email, telefone, entrada, saida, pessoas })
+
+    // ✅ validações
     const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
     const telefoneLimpo = telefone.replace(/\s+/g, "")
     const telefoneValido = /^\+?[0-9]{9,15}$/.test(telefoneLimpo)
 
     if (!emailValido) {
-      alert("Introduz um email válido.")
+      alert("Email inválido")
       return
     }
 
     if (!telefoneValido) {
-      alert("Introduz um número de telefone válido.")
+      alert("Telefone inválido")
       return
     }
 
     if (saida <= entrada) {
-      alert("A data de saída tem de ser posterior à data de entrada.")
+      alert("Data de saída inválida")
       return
     }
 
+    // 🔍 verificar disponibilidade
     const { data: conflitos, error: conflitoError } = await supabase
       .from('reservas')
       .select('*')
@@ -49,7 +46,7 @@ document.getElementById("form").addEventListener("submit", async (e) => {
       .gt('saida', entrada)
 
     if (conflitoError) {
-      console.error("Erro conflitos detalhado:", conflitoError)
+      console.error("Erro conflitos:", conflitoError)
       alert("Erro ao verificar disponibilidade: " + conflitoError.message)
       return
     }
@@ -59,17 +56,21 @@ document.getElementById("form").addEventListener("submit", async (e) => {
       return
     }
 
+    // 👤 criar cliente
     const { data: cliente, error: clienteError } = await supabase
       .from('clientes')
       .insert([{ nome, email, telefone }])
       .select()
 
     if (clienteError) {
-      console.error("Erro cliente detalhado:", clienteError)
+      console.error("Erro cliente:", clienteError)
       alert("Erro ao criar cliente: " + clienteError.message)
       return
     }
 
+    console.log("Cliente criado:", cliente)
+
+    // 🛏️ criar reserva
     const { data: reserva, error: reservaError } = await supabase
       .from('reservas')
       .insert([{
@@ -83,13 +84,16 @@ document.getElementById("form").addEventListener("submit", async (e) => {
       .select()
 
     if (reservaError) {
-      console.error("Erro reserva detalhado:", reservaError)
+      console.error("Erro reserva:", reservaError)
       alert("Erro ao criar reserva: " + reservaError.message)
       return
     }
 
+    console.log("Reserva criada:", reserva)
+
     alert("Reserva criada com sucesso!")
     document.getElementById("form").reset()
+
   } catch (err) {
     console.error("Erro geral:", err)
     alert("Erro inesperado")
