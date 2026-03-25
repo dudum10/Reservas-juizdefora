@@ -10,38 +10,45 @@ document.getElementById("form").addEventListener("submit", async (e) => {
 
   try {
     const nome = document.getElementById("nome").value.trim()
-    const email = document.getElementById("email").value.trim()
+    const email = document.getElementById("email").value.trim().toLowerCase()
     const telefone = document.getElementById("telefone").value.trim()
     const entrada = document.getElementById("entrada").value
     const saida = document.getElementById("saida").value
     const pessoas = document.getElementById("pessoas").value
 
-    console.log("Dados:", { nome, email, telefone, entrada, saida, pessoas })
-
-    // ✅ validações
     const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
     const telefoneLimpo = telefone.replace(/\s+/g, "")
     const telefoneValido = /^\+?[0-9]{9,15}$/.test(telefoneLimpo)
 
+    if (!nome) {
+      alert("Introduz o nome.")
+      return
+    }
+
     if (!emailValido) {
-      alert("Email inválido")
+      alert("Introduz um email válido.")
       return
     }
 
     if (!telefoneValido) {
-      alert("Telefone inválido")
+      alert("Introduz um número de telefone válido.")
+      return
+    }
+
+    if (!entrada || !saida) {
+      alert("Seleciona as datas.")
       return
     }
 
     if (saida <= entrada) {
-      alert("Data de saída inválida")
+      alert("A data de saída tem de ser posterior à data de entrada.")
       return
     }
 
-    // 🔍 verificar disponibilidade
+    // Verificar disponibilidade
     const { data: conflitos, error: conflitoError } = await supabase
       .from('reservas')
-      .select('*')
+      .select('id, entrada, saida')
       .lt('entrada', saida)
       .gt('saida', entrada)
 
@@ -52,29 +59,68 @@ document.getElementById("form").addEventListener("submit", async (e) => {
     }
 
     if (conflitos.length >= 8) {
-      alert("Sem quartos disponíveis")
+      alert("Sem quartos disponíveis para essas datas.")
       return
     }
 
-    // 👤 criar cliente
-    const { data: cliente, error: clienteError } = await supabase
+    // Procurar cliente existente pelo email
+    const { data: clientesExistentes, error: clienteBuscaError } = await supabase
       .from('clientes')
-      .insert([{ nome, email, telefone }])
-      .select()
+      .select('id, nome, email, telefone')
+      .eq('email', email)
+      .limit(1)
 
-    if (clienteError) {
-      console.error("Erro cliente:", clienteError)
-      alert("Erro ao criar cliente: " + clienteError.message)
+    if (clienteBuscaError) {
+      console.error("Erro a procurar cliente:", clienteBuscaError)
+      alert("Erro ao procurar cliente: " + clienteBuscaError.message)
       return
     }
 
-    console.log("Cliente criado:", cliente)
+    let clienteId = null
 
-    // 🛏️ criar reserva
+    if (clientesExistentes && clientesExistentes.length > 0) {
+      clienteId = clientesExistentes[0].id
+
+      // Atualizar nome e telefone do cliente existente
+      const { error: clienteUpdateError } = await supabase
+        .from('clientes')
+        .update({
+          nome,
+          telefone
+        })
+        .eq('id', clienteId)
+
+      if (clienteUpdateError) {
+        console.error("Erro ao atualizar cliente:", clienteUpdateError)
+        alert("Erro ao atualizar cliente: " + clienteUpdateError.message)
+        return
+      }
+    } else {
+      // Criar cliente novo
+      const { data: novoCliente, error: clienteCreateError } = await supabase
+        .from('clientes')
+        .insert([{
+          nome,
+          email,
+          telefone
+        }])
+        .select('id')
+        .single()
+
+      if (clienteCreateError) {
+        console.error("Erro ao criar cliente:", clienteCreateError)
+        alert("Erro ao criar cliente: " + clienteCreateError.message)
+        return
+      }
+
+      clienteId = novoCliente.id
+    }
+
+    // Criar reserva
     const { data: reserva, error: reservaError } = await supabase
       .from('reservas')
       .insert([{
-        cliente_id: cliente[0].id,
+        cliente_id: clienteId,
         entrada,
         saida,
         pessoas: Number(pessoas),
@@ -84,13 +130,12 @@ document.getElementById("form").addEventListener("submit", async (e) => {
       .select()
 
     if (reservaError) {
-      console.error("Erro reserva:", reservaError)
+      console.error("Erro ao criar reserva:", reservaError)
       alert("Erro ao criar reserva: " + reservaError.message)
       return
     }
 
     console.log("Reserva criada:", reserva)
-
     alert("Reserva criada com sucesso!")
     document.getElementById("form").reset()
 
